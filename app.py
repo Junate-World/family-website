@@ -23,6 +23,17 @@ login_manager.login_view = 'login'  # redirect to login page if unauthorized
 
 bcrypt = Bcrypt(app)
 
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///family.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['UPLOAD_FOLDER'] = 'static/uploads'
+
+# Initialize database
+db.init_app(app)
+
+# Ensure tables are created (production-safe)
+with app.app_context():
+    db.create_all()
+
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -86,15 +97,7 @@ def logout():
     logout_user()
     return redirect(url_for('login'))
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///family.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['UPLOAD_FOLDER'] = 'static/uploads'
 
-db.init_app(app)
-
-@app.before_first_request
-def create_tables():
-    db.create_all()
 
 
 @app.route('/')
@@ -225,8 +228,8 @@ def family_tree():
     return render_template('family_tree.html', tree_data=tree_data)
 
 
+
 # Run the app
 if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
+    
     app.run(debug=True)
