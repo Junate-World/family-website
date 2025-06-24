@@ -92,13 +92,11 @@ app.config['UPLOAD_FOLDER'] = 'static/uploads'
 
 db.init_app(app)
 
-
-#@app.before_first_request
+@app.before_first_request
 def create_tables():
     db.create_all()
 
 
-# Home page
 @app.route('/')
 @login_required
 def index():
