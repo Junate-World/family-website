@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*.pdb
+*.egg-info/
+*.egg
+.env
+.venv/
+venv/
+ENV/
+env/
+*.log
+
+# IDEs & Editors
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Flask/Database
+instance/
+family.db
+*.sqlite3
+*.db
+
+# Flask Uploads
+static/uploads/
+
+# MacOS/Linux/Windows System Files
+.DS_Store
+Thumbs.db
+
+# Pytest cache
+.pytest_cache/
+.cache/
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# Package management
+pip-log.txt
+pip-delete-this-directory.txt
+
+#other unnecessary files
+create_summary_pdf.py

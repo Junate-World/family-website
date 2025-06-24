@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Add Family Member</h2>
+<form method="POST" enctype="multipart/form-data">
+    <div class="mb-3">
+        <label>Full Name</label>
+        <input type="text" name="full_name" class="form-control" required>
+    </div>
+    <div class="mb-3">
+        <label>Date of Birth</label>
+        <input type="date" name="dob" class="form-control" required>
+    </div>
+    <div class="mb-3">
+        <label>Date of Death (leave blank if alive)</label>
+        <input type="date" name="dod" class="form-control">
+    </div>
+    <div class="mb-3">
+        <label>Relationship</label>
+        <input type="text" name="relationship" class="form-control">
+    </div>
+    <div class="mb-3">
+        <label>Biography</label>
+        <textarea name="biography" class="form-control" rows="4" required></textarea>
+    </div>
+    <div class="mb-3">
+        <label>Photo</label>
+        <input type="file" name="photo" class="form-control">
+    </div>
+
+    <label for="parent_id">Parent:</label>
+    <select name="parent_id">
+    <option value="">None</option>
+    {% for p in FamilyMember.query.all() %}
+        <option value="{{ p.id }}" {% if parent_id == p.id %}selected{% endif %}>{{ p.full_name }}</option>
+    {% endfor %}
+</select><br><br>
+
+    <button type="submit" class="btn btn-success">Save</button>
+</form>
+{% endblock %}
