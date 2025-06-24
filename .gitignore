@@ -46,3 +46,4 @@ pip-delete-this-directory.txt
 
 #other unnecessary files
 create_summary_pdf.py
+*.pdf
