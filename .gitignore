@@ -27,7 +27,8 @@ family.db
 *.db
 
 # Flask Uploads
-static/uploads/
+static/uploads/*
+!static/uploads/.keep
 
 # MacOS/Linux/Windows System Files
 .DS_Store
