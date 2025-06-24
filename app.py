@@ -23,7 +23,7 @@ login_manager.login_view = 'login'  # redirect to login page if unauthorized
 
 bcrypt = Bcrypt(app)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///family.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
 
