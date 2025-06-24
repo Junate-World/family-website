@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: family-website
+    runtime: python
+    buildCommand: ""
+    startCommand: gunicorn app:app
+    pythonVersion: 3.11
