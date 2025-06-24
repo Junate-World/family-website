@@ -27,6 +27,9 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///family.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
 
+# ✅ Ensure upload folder exists (even in production)
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
 # Initialize database
 db.init_app(app)
 
