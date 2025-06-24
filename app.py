@@ -34,6 +34,11 @@ db.init_app(app)
 with app.app_context():
     db.create_all()
 
+@app.route('/init-db')
+def init_db():
+    with app.app_context():
+        db.create_all()
+    return "Database tables created successfully!"
 
 @login_manager.user_loader
 def load_user(user_id):
