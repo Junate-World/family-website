@@ -16,6 +16,7 @@ from flask_login import LoginManager
 from flask_bcrypt import Bcrypt
 from models import User
 from flask_mail import Mail, Message
+from flask_migrate import Migrate
 
 
 login_manager = LoginManager()
@@ -39,6 +40,7 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 # Initialize database
 db.init_app(app)
+migrate = Migrate(app, db)
 mail = Mail(app)
 
 # Ensure tables are created (production-safe)
