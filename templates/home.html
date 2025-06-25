@@ -2,7 +2,10 @@
 {% block content %}
 
 <div class="d-flex justify-content-between align-items-center mb-4">
-  <h1 class="mb-0">Family Members</h1>
+  <div class="d-flex align-items-center gap-2">
+    <h1 class="mb-0">Family Members</h1>
+    <img src="{{ url_for('static', filename='my-favicon-32x32.png') }}" alt="Family Icon" style="width:32px;height:32px;object-fit:contain;box-shadow:0 2px 8px rgba(0,0,0,0.08);border-radius:8px;" />
+  </div>
   <a href="{{ url_for('add_member') }}" class="btn btn-primary">+ Add Member</a>
 </div>
 
