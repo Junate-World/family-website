@@ -5,7 +5,7 @@ import os
 
 
 from extensions import db
-from models import FamilyMember
+from models import FamilyMember, Comment
 
 app = Flask(__name__)
 app.secret_key = 'super-secret-key-1234'
@@ -130,8 +130,20 @@ def index():
     # Birthday reminder logic
     today = datetime.today()
     birthday_members = [member for member in members if member.dob.month == today.month and member.dob.day == today.day]
-    for member in birthday_members:
-        flash(f"Today is {member.full_name}'s birthday! 🎉", category='success')
+    birthday_notifications = [f"Today is {member.full_name}'s birthday! 🎉" for member in birthday_members]
+
+    # Motivational quotes
+    motivational_quotes = [
+        "Family is not an important thing. It's everything.",
+        "The love of a family is life's greatest blessing.",
+        "Family: where life begins and love never ends.",
+        "Rejoice with your family in the beautiful land of life.",
+        "A happy family is but an earlier heaven.",
+        "In time of test, family is best.",
+        "The memories we make with our family is everything."
+    ]
+
+    show_notifications = birthday_notifications if birthday_notifications else motivational_quotes
 
     # Email notification to all users if there is a birthday today
     if birthday_members:
@@ -145,14 +157,26 @@ def index():
             )
             mail.send(msg)
 
-    return render_template('home.html', members=members, relationship=relationship)
+    return render_template('home.html', members=members, relationship=relationship, notifications=show_notifications)
 
 
 # View a family member's profile
-@app.route('/member/<int:member_id>')
+@app.route('/member/<int:member_id>', methods=['GET', 'POST'])
 def member_profile(member_id):
     member = FamilyMember.query.get_or_404(member_id)
-    return render_template('member_profile.html', member=member)
+    if request.method == 'POST':
+        name = request.form['name']
+        content = request.form['content']
+        if name and content:
+            comment = Comment(member_id=member.id, name=name, content=content)
+            db.session.add(comment)
+            db.session.commit()
+            flash('Comment added!', category='success')
+        else:
+            flash('Name and comment are required.', category='error')
+        return redirect(url_for('member_profile', member_id=member.id))
+    comments = Comment.query.filter_by(member_id=member.id).order_by(Comment.timestamp.desc()).all()
+    return render_template('member_profile.html', member=member, comments=comments)
 
 
 # Add a new family member

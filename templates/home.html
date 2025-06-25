@@ -13,6 +13,31 @@
     <a href="{{ url_for('index') }}" class="btn btn-link">Clear</a>
 </form>
 
+<!-- Birthday/Motivation Slideshow -->
+<div class="mb-4">
+  <div id="notificationCarousel" class="carousel slide" data-bs-ride="carousel" data-bs-interval="5000">
+    <div class="carousel-inner">
+      {% for note in notifications %}
+      <div class="carousel-item {% if loop.first %}active{% endif %}">
+        <div class="alert alert-info text-center mb-0" style="font-size:1.2rem;">
+          {{ note }}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% if notifications|length > 1 %}
+    <button class="carousel-control-prev" type="button" data-bs-target="#notificationCarousel" data-bs-slide="prev">
+      <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+      <span class="visually-hidden">Previous</span>
+    </button>
+    <button class="carousel-control-next" type="button" data-bs-target="#notificationCarousel" data-bs-slide="next">
+      <span class="carousel-control-next-icon" aria-hidden="true"></span>
+      <span class="visually-hidden">Next</span>
+    </button>
+    {% endif %}
+  </div>
+</div>
+
 <div class="mb-4">
   <a href="{{ url_for('family_tree') }}" class="btn btn-outline-secondary"><i class="bi bi-diagram-3"></i> View Family Tree</a>
 </div>
