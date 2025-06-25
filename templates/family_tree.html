@@ -1,59 +1,25 @@
 {% extends "base.html" %}
 {% block content %}
-
-<script src="https://d3js.org/d3.v7.min.js"></script>
+<div class="container mt-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-10">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <h1 class="text-center mb-4">Family Tree</h1>
+          <div id="tree" class="d-flex justify-content-center"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 <style>
-        .node circle { fill: lightblue; }
-        .node text { font: 12px sans-serif; }
-        .link { fill: none; stroke: #999; stroke-width: 2px; }
-    </style>
-
-
-    <h1>Family Tree</h1>
-    <div id="tree"></div>
-
+.node circle { fill: #4f8cff; }
+.node text { font: 14px 'Segoe UI', 'Roboto', Arial, sans-serif; }
+.link { fill: none; stroke: #999; stroke-width: 2px; }
+</style>
+<script src="https://d3js.org/d3.v7.min.js"></script>
 <script>
-        const data = {{ tree_data|tojson }};
-
-        const width = 1000, height = 600;
-        const svg = d3.select("#tree")
-            .append("svg")
-            .attr("width", width)
-            .attr("height", height)
-            .append("g")
-            .attr("transform", "translate(40,0)");
-
-        const treeLayout = d3.tree().size([height, width - 160]);
-        const root = d3.hierarchy(data[0]); // Displaying the first root only
-
-        treeLayout(root);
-
-        svg.selectAll('.link')
-            .data(root.links())
-            .enter()
-            .append('path')
-            .attr('class', 'link')
-            .attr('d', d3.linkHorizontal()
-                .x(d => d.y)
-                .y(d => d.x)
-            );
-
-        const node = svg.selectAll('.node')
-            .data(root.descendants())
-            .enter()
-            .append('g')
-            .attr('class', 'node')
-            .attr('transform', d => `translate(${d.y},${d.x})`);
-
-        node.append('circle')
-            .attr('r', 5);
-
-        node.append('text')
-            .attr('dy', 3)
-            .attr('x', d => d.children ? -10 : 10)
-            .style('text-anchor', d => d.children ? 'end' : 'start')
-            .text(d => d.data.name);
+window.familyTreeData = {{ tree_data|tojson }};
 </script>
-
-
+<script src="{{ url_for('static', filename='family_tree.js') }}"></script>
 {% endblock %}
