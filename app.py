@@ -15,6 +15,7 @@ app.secret_key = 'super-secret-key-1234'
 from flask_login import LoginManager
 from flask_bcrypt import Bcrypt
 from models import User
+from flask_mail import Mail, Message
 
 
 login_manager = LoginManager()
@@ -26,12 +27,19 @@ bcrypt = Bcrypt(app)
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
+app.config['MAIL_SERVER'] = 'smtp.sendgrid.net'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = 'apikey'  # This is literally the string 'apikey'
+app.config['MAIL_PASSWORD'] = os.environ.get('SENDGRID_API_KEY')
+app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER')
 
 # ✅ Ensure upload folder exists (even in production)
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 # Initialize database
 db.init_app(app)
+mail = Mail(app)
 
 # Ensure tables are created (production-safe)
 with app.app_context():
@@ -54,12 +62,16 @@ from flask_login import login_user, login_required, logout_user, current_user
 def register():
     if request.method == 'POST':
         username = request.form['username']
+        email = request.form['email']
         password1 = request.form['password1']
         password2 = request.form['password2']
 
         user = User.query.filter_by(username=username).first()
+        email_user = User.query.filter_by(email=email).first()
         if user:
             flash('Username already exists.', category='error')
+        elif email_user:
+            flash('Email already registered.', category='error')
         elif len(username) < 2:
             flash('Username must not be left blank and must be greater than or equal to 2 characters.', category='error')
         elif password1 != password2:
@@ -67,17 +79,12 @@ def register():
         elif len(password1) < 7:
             flash('Password must be at least 7 characters.', category='error')
         else:
-            new_user = User(username=username, password_hash=bcrypt.generate_password_hash(password1).decode('utf-8'))
+            new_user = User(username=username, email=email, password_hash=bcrypt.generate_password_hash(password1).decode('utf-8'))
             db.session.add(new_user)
             db.session.commit()
             login_user(new_user, remember=True)
             flash('Account created!', category='success')
             return redirect(url_for('login'))
-
-        #user = User(username=username, password_hash=bcrypt.generate_password_hash(password).decode('utf-8'))
-        #db.session.add(user)
-        #db.session.commit()
-        #return redirect(url_for('login'))
 
     return render_template('register.html', user=current_user)
 
@@ -109,16 +116,32 @@ def logout():
 
 
 @app.route('/')
-@login_required
 def index():
     relationship = request.args.get('relationship', '')
-    
     if relationship:
         members = FamilyMember.query.filter(
             FamilyMember.relationship.ilike(f"%{relationship}%")
         ).all()
     else:
         members = FamilyMember.query.all()
+
+    # Birthday reminder logic
+    today = datetime.today()
+    birthday_members = [member for member in members if member.dob.month == today.month and member.dob.day == today.day]
+    for member in birthday_members:
+        flash(f"Today is {member.full_name}'s birthday! 🎉", category='success')
+
+    # Email notification to all users if there is a birthday today
+    if birthday_members:
+        users = User.query.all()
+        recipient_emails = [user.email for user in users if user.email]
+        for member in birthday_members:
+            msg = Message(
+                subject=f"Birthday Reminder: {member.full_name}",
+                recipients=recipient_emails,
+                body=f"Today is {member.full_name}'s birthday! Wish them a happy birthday!"
+            )
+            mail.send(msg)
 
     return render_template('home.html', members=members, relationship=relationship)
 
