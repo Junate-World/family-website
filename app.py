@@ -25,7 +25,7 @@ login_manager.login_view = "login"  # This is correct for Flask-Login
 
 bcrypt = Bcrypt(app)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///family.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
 app.config['MAIL_SERVER'] = 'smtp.sendgrid.net'
@@ -234,9 +234,6 @@ def edit_member(member_id):
 @app.route('/delete/<int:member_id>', methods=['POST'])
 @login_required
 def delete_member(member_id):
-    if not current_user.is_admin:
-        flash('You do not have permission to delete members.', category='error')
-        return redirect(url_for('index'))
     member = FamilyMember.query.get_or_404(member_id)
     # Delete photo file if it exists
     if member.photo_url:
