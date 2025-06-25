@@ -234,14 +234,15 @@ def edit_member(member_id):
 @app.route('/delete/<int:member_id>', methods=['POST'])
 @login_required
 def delete_member(member_id):
+    if not current_user.is_admin:
+        flash('You do not have permission to delete members.', category='error')
+        return redirect(url_for('index'))
     member = FamilyMember.query.get_or_404(member_id)
-
     # Delete photo file if it exists
     if member.photo_url:
         photo_path = os.path.join(app.config['UPLOAD_FOLDER'], member.photo_url)
         if os.path.exists(photo_path):
             os.remove(photo_path)
-
     db.session.delete(member)
     db.session.commit()
     return redirect(url_for('index'))
