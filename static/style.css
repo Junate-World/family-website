@@ -82,6 +82,58 @@ form button, form a {
     margin-left: 0.5rem;
 }
 
+input[type="text"] {
+    transition: all 0.3s ease-in-out;
+}
+
+.card .btn {
+    margin-right: 0.5rem;
+}
+
+form button:hover {
+    transform: scale(1.02);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Dark mode styles */
+body.dark-mode {
+    background: #121212;
+    color: #e0e0e0;
+}
+
+body.dark-mode .card {
+    background: #1e1e1e;
+    box-shadow: 0 4px 24px rgba(255, 255, 255, 0.05);
+}
+
+body.dark-mode .card-title {
+    color: #f1f1f1;
+}
+
+body.dark-mode .card-text {
+    color: #bbb;
+}
+
+body.dark-mode .navbar {
+    background: #1f1f1f;
+    color: #fff;
+}
+
+body.dark-mode form {
+    background: #1e1e1e;
+    color: #e0e0e0;
+    box-shadow: 0 2px 12px rgba(255, 255, 255, 0.05);
+}
+
+body.dark-mode input[type="text"],
+body.dark-mode textarea {
+    background: #2c2c2c;
+    color: #fff;
+    border: 1px solid #555;
+}
+
+
+
 @media (max-width: 768px) {
     .row {
         flex-direction: column;
