@@ -19,7 +19,7 @@ from models import User
 
 login_manager = LoginManager()
 login_manager.init_app(app)
-login_manager.login_view = 'login'  # redirect to login page if unauthorized
+login_manager.login_view = "login"  # This is correct for Flask-Login
 
 bcrypt = Bcrypt(app)
 
@@ -148,9 +148,12 @@ def add_member():
         parent_id = request.form.get('parent_id')
         parent_id = int(parent_id) if parent_id else None  # ✅ Convert to int if exists
 
-        if photo:
+        if photo and photo.filename != '':
             photo_filename = photo.filename
-            photo.save(os.path.join(app.config['UPLOAD_FOLDER'], photo_filename))
+            if photo_filename:
+                photo_path = os.path.join(app.config['UPLOAD_FOLDER'], str(photo_filename))
+                photo.save(photo_path)
+            # Set photo_url on new_member below
 
         new_member = FamilyMember(
             full_name=full_name,
@@ -160,7 +163,7 @@ def add_member():
             biography=biography,
             relationship=relationship,
             photo_url=photo_filename,
-            parent_id=parent_id  # ✅ Pass it here
+            parent_id=parent_id
         )
 
         db.session.add(new_member)
@@ -192,7 +195,8 @@ def edit_member(member_id):
         photo = request.files['photo']
         if photo and photo.filename != '':
             photo_filename = photo.filename
-            photo.save(os.path.join(app.config['UPLOAD_FOLDER'], photo_filename))
+            photo_path = os.path.join(app.config['UPLOAD_FOLDER'], photo_filename)
+            photo.save(photo_path)
             member.photo_url = photo_filename
 
         db.session.commit()

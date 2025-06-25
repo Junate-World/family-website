@@ -1,0 +1,100 @@
+/* Modern Family Portal Styles */
+body {
+    background: #f8fafc;
+    font-family: 'Segoe UI', 'Roboto', Arial, sans-serif;
+    color: #222;
+}
+
+h1, h2, h3, h4, h5 {
+    font-weight: 700;
+    color: #2c3e50;
+}
+
+.card {
+    border: none;
+    border-radius: 1rem;
+    box-shadow: 0 4px 24px rgba(44, 62, 80, 0.08);
+    transition: transform 0.15s;
+    background: #fff;
+}
+.card:hover {
+    transform: translateY(-4px) scale(1.02);
+    box-shadow: 0 8px 32px rgba(44, 62, 80, 0.12);
+}
+.card img {
+    border-radius: 1rem 1rem 0 0;
+    object-fit: cover;
+    width: 100%;
+    height: 220px;
+}
+.card-title {
+    font-size: 1.25rem;
+    color: #34495e;
+}
+.card-text {
+    color: #7f8c8d;
+}
+
+.btn-primary {
+    background: linear-gradient(90deg, #4f8cff, #1cb5e0);
+    border: none;
+    border-radius: 2rem;
+    padding: 0.5rem 1.5rem;
+    font-weight: 600;
+    transition: background 0.2s;
+}
+.btn-primary:hover {
+    background: linear-gradient(90deg, #1cb5e0, #4f8cff);
+}
+
+.btn-outline-danger, .btn-outline-primary {
+    border-radius: 2rem;
+    font-weight: 500;
+}
+
+.navbar {
+    border-radius: 0 0 1rem 1rem;
+    box-shadow: 0 2px 12px rgba(44, 62, 80, 0.06);
+}
+
+form {
+    background: #fff;
+    padding: 1.5rem 2rem;
+    border-radius: 1rem;
+    box-shadow: 0 2px 12px rgba(44, 62, 80, 0.04);
+    margin-bottom: 2rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: center;
+}
+form input[type="text"] {
+    border-radius: 2rem;
+    border: 1px solid #d1d5db;
+    padding: 0.5rem 1rem;
+    outline: none;
+    transition: border 0.2s;
+}
+form input[type="text"]:focus {
+    border: 1.5px solid #4f8cff;
+}
+form button, form a {
+    margin-left: 0.5rem;
+}
+
+@media (max-width: 768px) {
+    .row {
+        flex-direction: column;
+    }
+    .col-md-4 {
+        width: 100%;
+        margin-bottom: 1.5rem;
+    }
+    .card img {
+        height: 160px;
+    }
+    form {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+} 
