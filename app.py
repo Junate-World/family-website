@@ -273,17 +273,19 @@ def delete_member(member_id):
 @app.route('/family-tree')
 def family_tree():
     members = FamilyMember.query.all()
+    member_dict = {m.id: m for m in members}
+    # Build a set of all member ids that are children
+    child_ids = set(m.parent_id for m in members if m.parent_id)
+    # Roots are members who are not anyone's child (orphaned or true roots)
+    roots = [m for m in members if m.id not in child_ids or not m.parent_id]
 
-    # Convert members to dict format for JS
     def build_tree(member):
         return {
             "name": member.full_name,
             "children": [build_tree(child) for child in member.children]
         }
 
-    roots = [m for m in members if not m.parent_id]
     tree_data = [build_tree(root) for root in roots]
-
     return render_template('family_tree.html', tree_data=tree_data)
 
 
