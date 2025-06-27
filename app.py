@@ -2,7 +2,9 @@ from flask import Flask, render_template, request, redirect, url_for, flash, get
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 import os
-
+import boto3
+from werkzeug.utils import secure_filename
+from botocore.exceptions import ClientError
 
 from extensions import db
 from models import FamilyMember, Comment
@@ -46,6 +48,37 @@ mail = Mail(app)
 # Ensure tables are created (production-safe)
 with app.app_context():
     db.create_all()
+
+# Wasabi S3 Configuration
+app.config['WASABI_ACCESS_KEY'] = os.environ.get('WASABI_ACCESS_KEY')
+app.config['WASABI_SECRET_KEY'] = os.environ.get('WASABI_SECRET_KEY')
+app.config['WASABI_BUCKET'] = os.environ.get('WASABI_BUCKET')
+app.config['WASABI_REGION'] = os.environ.get('WASABI_REGION', 'us-east-1')
+app.config['WASABI_ENDPOINT'] = os.environ.get('WASABI_ENDPOINT', 'https://s3.us-east-1.wasabisys.com')
+
+# Initialize Wasabi S3 client
+s3_client = boto3.client(
+    's3',
+    aws_access_key_id=app.config['WASABI_ACCESS_KEY'],
+    aws_secret_access_key=app.config['WASABI_SECRET_KEY'],
+    region_name=app.config['WASABI_REGION'],
+    endpoint_url=app.config['WASABI_ENDPOINT']
+)
+
+def upload_to_wasabi(file, filename):
+    """Upload a file to Wasabi S3"""
+    try:
+        s3_client.upload_fileobj(file, app.config['WASABI_BUCKET'], f"uploads/{filename}")
+        return filename
+    except ClientError as e:
+        print(f"Error uploading to Wasabi: {e}")
+        return None
+
+def get_wasabi_url(filename):
+    """Get the public URL for a file in Wasabi"""
+    if filename:
+        return f"{app.config['WASABI_ENDPOINT']}/{app.config['WASABI_BUCKET']}/uploads/{filename}"
+    return None
 
 @app.route('/init-db')
 def init_db():
@@ -140,7 +173,17 @@ def index():
         "Rejoice with your family in the beautiful land of life.",
         "A happy family is but an earlier heaven.",
         "In time of test, family is best.",
-        "The memories we make with our family is everything."
+        "The memories we make with our family is everything.", 
+        "Family is your first team—always play for each other.", 
+        "A strong family builds strong hearts.", 
+        "Love begins at home—nurture it daily.", 
+        "Together, we are unbreakable.", 
+        "Home is where support never ends.", 
+        "Family: your forever source of strength.", 
+        "Grow together, rise together.", 
+        "In unity, we find peace.", 
+        "Family fuels your dreams with love.", 
+        "With family by your side, anything is possible."
     ]
 
     show_notifications = birthday_notifications if birthday_notifications else motivational_quotes
@@ -195,14 +238,16 @@ def add_member():
         photo_filename = None
 
         parent_id = request.form.get('parent_id')
-        parent_id = int(parent_id) if parent_id else None  # ✅ Convert to int if exists
+        parent_id = int(parent_id) if parent_id else None
 
         if photo and photo.filename != '':
-            photo_filename = photo.filename
-            if photo_filename:
-                photo_path = os.path.join(app.config['UPLOAD_FOLDER'], str(photo_filename))
-                photo.save(photo_path)
-            # Set photo_url on new_member below
+            photo_filename = secure_filename(photo.filename)
+            # Upload to Wasabi S3
+            if upload_to_wasabi(photo, photo_filename):
+                photo_filename = photo_filename  # Keep the filename for database
+            else:
+                flash('Error uploading photo. Please try again.', category='error')
+                return redirect(url_for('add_member'))
 
         new_member = FamilyMember(
             full_name=full_name,
@@ -240,13 +285,15 @@ def edit_member(member_id):
         parent_id = request.form.get('parent_id')
         parent_id = int(parent_id) if parent_id else None
 
-
         photo = request.files['photo']
         if photo and photo.filename != '':
-            photo_filename = photo.filename
-            photo_path = os.path.join(app.config['UPLOAD_FOLDER'], photo_filename)
-            photo.save(photo_path)
-            member.photo_url = photo_filename
+            photo_filename = secure_filename(photo.filename)
+            # Upload to Wasabi S3
+            if upload_to_wasabi(photo, photo_filename):
+                member.photo_url = photo_filename
+            else:
+                flash('Error uploading photo. Please try again.', category='error')
+                return redirect(url_for('edit_member', member_id=member.id))
 
         db.session.commit()
         return redirect(url_for('member_profile', member_id=member.id))
@@ -259,11 +306,15 @@ def edit_member(member_id):
 @login_required
 def delete_member(member_id):
     member = FamilyMember.query.get_or_404(member_id)
-    # Delete photo file if it exists
+    
+    # Delete photo file from Wasabi S3 if it exists
     if member.photo_url:
-        photo_path = os.path.join(app.config['UPLOAD_FOLDER'], member.photo_url)
-        if os.path.exists(photo_path):
-            os.remove(photo_path)
+        try:
+            s3_client.delete_object(Bucket=app.config['WASABI_BUCKET'], Key=f"uploads/{member.photo_url}")
+        except ClientError as e:
+            print(f"Error deleting from Wasabi: {e}")
+            # Continue with deletion even if file deletion fails
+    
     db.session.delete(member)
     db.session.commit()
     return redirect(url_for('index'))

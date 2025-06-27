@@ -6,7 +6,7 @@
       <div class="row g-0">
         {% if member.photo_url %}
         <div class="col-md-4 d-flex align-items-center justify-content-center p-3">
-          <img src="{{ url_for('static', filename='uploads/' + member.photo_url) }}" alt="Photo" class="img-fluid rounded" style="max-height: 220px;">
+          <img src="{{ get_wasabi_url(member.photo_url) }}" alt="Photo" class="img-fluid rounded" style="max-height: 220px;">
         </div>
         {% endif %}
         <div class="col-md-8">
@@ -19,10 +19,12 @@
             <p class="mb-1"><strong>Relationship:</strong> {{ member.relationship }}</p>
             <p class="card-text mt-3">{{ member.biography }}</p>
             <div class="d-flex justify-content-between mt-4 align-items-center">
-              <a href="{{ url_for('edit_member', member_id=member.id) }}" class="btn btn-outline-primary btn-sm">Edit Profile</a>
-              <form action="{{ url_for('delete_member', member_id=member.id) }}" method="post" onsubmit="return confirm('Are you sure you want to delete this member?');" class="m-0 p-0">
-                <button type="submit" class="btn btn-outline-danger btn-sm">Delete Profile</button>
-              </form>
+              {% if current_user.is_authenticated %}
+                <a href="{{ url_for('edit_member', member_id=member.id) }}" class="btn btn-outline-primary btn-sm">Edit Profile</a>
+                <form action="{{ url_for('delete_member', member_id=member.id) }}" method="post" onsubmit="return confirm('Are you sure you want to delete this member?');" class="m-0 p-0">
+                  <button type="submit" class="btn btn-outline-danger btn-sm">Delete Profile</button>
+                </form>
+              {% endif %}
             </div>
           </div>
         </div>
