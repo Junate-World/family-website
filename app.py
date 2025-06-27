@@ -54,7 +54,21 @@ app.config['WASABI_ACCESS_KEY'] = os.environ.get('WASABI_ACCESS_KEY')
 app.config['WASABI_SECRET_KEY'] = os.environ.get('WASABI_SECRET_KEY')
 app.config['WASABI_BUCKET'] = os.environ.get('WASABI_BUCKET')
 app.config['WASABI_REGION'] = os.environ.get('WASABI_REGION', 'us-east-1')
-app.config['WASABI_ENDPOINT'] = os.environ.get('WASABI_ENDPOINT', 'https://s3.us-east-1.wasabisys.com')
+
+# Set the correct endpoint based on region
+region = app.config['WASABI_REGION']
+if region == 'us-east-1':
+    default_endpoint = 'https://s3.us-east-1.wasabisys.com'
+elif region == 'us-west-1':
+    default_endpoint = 'https://s3.us-west-1.wasabisys.com'
+elif region == 'eu-central-1':
+    default_endpoint = 'https://s3.eu-central-1.wasabisys.com'
+elif region == 'ap-northeast-1':
+    default_endpoint = 'https://s3.ap-northeast-1.wasabisys.com'
+else:
+    default_endpoint = f'https://s3.{region}.wasabisys.com'
+
+app.config['WASABI_ENDPOINT'] = os.environ.get('WASABI_ENDPOINT', default_endpoint)
 
 # Initialize Wasabi S3 client
 s3_client = boto3.client(
