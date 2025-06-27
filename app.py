@@ -80,6 +80,11 @@ def get_wasabi_url(filename):
         return f"{app.config['WASABI_ENDPOINT']}/{app.config['WASABI_BUCKET']}/uploads/{filename}"
     return None
 
+# Make get_wasabi_url available in templates
+@app.context_processor
+def utility_processor():
+    return dict(get_wasabi_url=get_wasabi_url)
+
 @app.route('/init-db')
 def init_db():
     with app.app_context():
