@@ -5,6 +5,7 @@ import os
 import cloudinary
 import cloudinary.uploader
 import cloudinary.api
+from functools import wraps
 
 from extensions import db
 from models import FamilyMember, Comment, MemorableMoment
@@ -107,6 +108,29 @@ def delete_from_cloudinary(public_id):
 @app.context_processor
 def utility_processor():
     return dict(get_cloudinary_url=get_cloudinary_url)
+
+def can_edit_member(member):
+    """Check if current user can edit this family member"""
+    if not current_user.is_authenticated:
+        return False
+    return member.created_by == current_user.id
+
+def can_delete_member(member):
+    """Check if current user can delete this family member"""
+    if not current_user.is_authenticated:
+        return False
+    return member.created_by == current_user.id
+
+def require_member_ownership(f):
+    """Decorator to require ownership of a family member"""
+    @wraps(f)
+    def decorated_function(member_id, *args, **kwargs):
+        member = FamilyMember.query.get_or_404(member_id)
+        if not can_edit_member(member):
+            flash('You do not have permission to perform this action.', category='error')
+            return redirect(url_for('index'))
+        return f(member_id, *args, **kwargs)
+    return decorated_function
 
 @app.route('/init-db')
 def init_db():
@@ -383,11 +407,13 @@ def add_member():
             biography=biography,
             relationship=relationship,
             photo_url=photo_filename,
-            parent_id=parent_id
+            parent_id=parent_id,
+            created_by=current_user.id  # Set the creator
         )
 
         db.session.add(new_member)
         db.session.commit()
+        flash('Family member added successfully!', category='success')
         return redirect(url_for('index'))
 
     return render_template('add_member.html', FamilyMember=FamilyMember)
@@ -396,6 +422,7 @@ def add_member():
 # Edit a family member
 @app.route('/edit/<int:member_id>', methods=['GET', 'POST'])
 @login_required
+@require_member_ownership
 def edit_member(member_id):
     member = FamilyMember.query.get_or_404(member_id)
 
@@ -425,6 +452,7 @@ def edit_member(member_id):
             member.photo_url = photo_filename
 
         db.session.commit()
+        flash('Family member updated successfully!', category='success')
         return redirect(url_for('member_profile', member_id=member.id))
 
     return render_template('edit_member.html', FamilyMember=FamilyMember, member=member)
@@ -433,15 +461,17 @@ def edit_member(member_id):
 # Delete a family member
 @app.route('/delete/<int:member_id>', methods=['POST'])
 @login_required
+@require_member_ownership
 def delete_member(member_id):
     member = FamilyMember.query.get_or_404(member_id)
     
-    # Delete photo file from local storage
+    # Delete photo file from cloudinary
     if member.photo_url:
         delete_from_cloudinary(member.photo_url)
     
     db.session.delete(member)
     db.session.commit()
+    flash('Family member deleted successfully!', category='success')
     return redirect(url_for('index'))
 
 

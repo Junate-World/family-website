@@ -59,8 +59,27 @@
             {% endif %}
             <div class="card-body d-flex flex-column">
                 <h5 class="card-title">{{ member.full_name }}</h5>
-                <p class="card-text mb-2">{{ member.relationship }}</p>
-                <a href="{{ url_for('member_profile', member_id=member.id) }}" class="btn btn-primary mt-auto">View Profile</a>
+                <p class="card-text">
+                    <strong>Born:</strong> {{ member.dob.strftime('%B %d, %Y') }}<br>
+                    <strong>Relationship:</strong> {{ member.relationship }}<br>
+                    <strong>Status:</strong> 
+                    {% if member.is_alive %}
+                    <span class="badge bg-success">Alive</span>
+                    {% else %}
+                    <span class="badge bg-secondary">Deceased</span>
+                    {% endif %}
+                </p>
+                <div class="mt-auto">
+                    <a href="{{ url_for('member_profile', member_id=member.id) }}" class="btn btn-primary btn-sm">View Profile</a>
+                    {% if current_user.is_authenticated and member.created_by == current_user.id %}
+                    <a href="{{ url_for('edit_member', member_id=member.id) }}" class="btn btn-warning btn-sm">
+                        <i class="fas fa-edit"></i> Edit
+                    </a>
+                    <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteModal{{ member.id }}">
+                        <i class="fas fa-trash"></i> Delete
+                    </button>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>
@@ -120,5 +139,30 @@
   </div>
 </div>
 {% endif %}
+
+<!-- Delete Modals for Family Members -->
+{% for member in members %}
+{% if current_user.is_authenticated and member.created_by == current_user.id %}
+<div class="modal fade" id="deleteModal{{ member.id }}" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to delete {{ member.full_name }}? This action cannot be undone.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form method="POST" action="{{ url_for('delete_member', member_id=member.id) }}" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endfor %}
 
 {% endblock %}

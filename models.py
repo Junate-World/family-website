@@ -16,6 +16,7 @@ class FamilyMember(db.Model):
     biography = db.Column(db.Text)
     relationship = db.Column(db.String(100))
     photo_url = db.Column(db.String(200))
+    created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)  # Track who created this member
 
     parent_id = db.Column(db.Integer, db.ForeignKey('family_member.id'))
 
@@ -25,6 +26,9 @@ class FamilyMember(db.Model):
         backref='children',
         foreign_keys=[parent_id]
     )
+    
+    # Relationship to the user who created this member
+    creator = db.relationship('User', backref='created_members')
 
 # Create User model
 class User(db.Model, UserMixin):
