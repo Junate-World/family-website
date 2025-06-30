@@ -41,3 +41,13 @@ class Comment(db.Model):
     timestamp = db.Column(db.DateTime, default=db.func.current_timestamp())
 
     member = db.relationship('FamilyMember', backref='comments')
+
+class MemorableMoment(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text)
+    image_url = db.Column(db.String(500), nullable=False)
+    posted_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    posted_at = db.Column(db.DateTime, default=db.func.current_timestamp())
+    
+    user = db.relationship('User', backref='memorable_moments')

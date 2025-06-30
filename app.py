@@ -7,7 +7,7 @@ from werkzeug.utils import secure_filename
 from botocore.exceptions import ClientError
 
 from extensions import db
-from models import FamilyMember, Comment
+from models import FamilyMember, Comment, MemorableMoment
 
 app = Flask(__name__)
 app.secret_key = 'super-secret-key-1234'
@@ -91,7 +91,13 @@ def upload_to_wasabi(file, filename):
 def get_wasabi_url(filename):
     """Get the public URL for a file in Wasabi"""
     if filename:
-        return f"{app.config['WASABI_ENDPOINT']}/{app.config['WASABI_BUCKET']}/uploads/{filename}"
+        # Check if it's a memorable moment or member photo
+        if filename.startswith('moments/'):
+            # For memorable moments
+            return f"https://s3.{app.config['WASABI_REGION']}.wasabisys.com/{app.config['WASABI_BUCKET']}/{filename}"
+        else:
+            # For member photos
+            return f"https://s3.{app.config['WASABI_REGION']}.wasabisys.com/{app.config['WASABI_BUCKET']}/uploads/{filename}"
     return None
 
 # Make get_wasabi_url available in templates
@@ -207,6 +213,9 @@ def index():
 
     show_notifications = birthday_notifications if birthday_notifications else motivational_quotes
 
+    # Get memorable moments for slideshow
+    memorable_moments = MemorableMoment.query.order_by(MemorableMoment.posted_at.desc()).all()
+
     # Email notification to all users if there is a birthday today
     if birthday_members:
         users = User.query.all()
@@ -219,7 +228,7 @@ def index():
             )
             mail.send(msg)
 
-    return render_template('home.html', members=members, relationship=relationship, notifications=show_notifications)
+    return render_template('home.html', members=members, relationship=relationship, notifications=show_notifications, memorable_moments=memorable_moments)
 
 
 # View a family member's profile
@@ -359,6 +368,59 @@ def family_tree():
     return render_template('family_tree.html', tree_data=tree_data)
 
 
+@app.route('/post-moment', methods=['GET', 'POST'])
+@login_required
+def post_moment():
+    if request.method == 'POST':
+        title = request.form['title']
+        description = request.form['description']
+        image = request.files['image']
+        
+        if not title or not image:
+            flash('Title and image are required.', category='error')
+            return redirect(url_for('post_moment'))
+        
+        if image and image.filename != '':
+            image_filename = secure_filename(image.filename)
+            # Upload to Wasabi S3
+            if upload_to_wasabi(image, f"moments/{image_filename}"):
+                moment = MemorableMoment(
+                    title=title,
+                    description=description,
+                    image_url=image_filename,
+                    posted_by=current_user.id
+                )
+                db.session.add(moment)
+                db.session.commit()
+                flash('Memorable moment posted successfully!', category='success')
+                return redirect(url_for('index'))
+            else:
+                flash('Error uploading image. Please try again.', category='error')
+                return redirect(url_for('post_moment'))
+    
+    return render_template('post_moment.html')
+
+@app.route('/delete-moment/<int:moment_id>', methods=['POST'])
+@login_required
+def delete_moment(moment_id):
+    moment = MemorableMoment.query.get_or_404(moment_id)
+    
+    # Only allow the user who posted it to delete it
+    if moment.posted_by != current_user.id:
+        flash('You can only delete your own posts.', category='error')
+        return redirect(url_for('index'))
+    
+    # Delete image from Wasabi S3
+    if moment.image_url:
+        try:
+            s3_client.delete_object(Bucket=app.config['WASABI_BUCKET'], Key=f"moments/{moment.image_url}")
+        except ClientError as e:
+            print(f"Error deleting from Wasabi: {e}")
+    
+    db.session.delete(moment)
+    db.session.commit()
+    flash('Memorable moment deleted successfully!', category='success')
+    return redirect(url_for('index'))
 
 # Run the app
 if __name__ == '__main__':

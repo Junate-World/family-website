@@ -7,7 +7,10 @@
     <img src="{{ url_for('static', filename='my-favicon-32x32.png') }}" alt="Family Icon" style="width:32px;height:32px;object-fit:contain;box-shadow:0 2px 8px rgba(0,0,0,0.08);border-radius:8px;" />
   </div>
   {% if current_user.is_authenticated %}
-    <a href="{{ url_for('add_member') }}" class="btn btn-primary">+ Add Member</a>
+    <div class="d-flex gap-2">
+      <a href="{{ url_for('post_moment') }}" class="btn btn-outline-success btn-sm">📸 Post Moment</a>
+      <a href="{{ url_for('add_member') }}" class="btn btn-primary">+ Add Member</a>
+    </div>
   {% endif %}
 </div>
 
@@ -68,5 +71,54 @@
     </div>
     {% endif %}
 </div>
+
+<!-- Memorable Moments Slideshow -->
+{% if memorable_moments %}
+<div class="col-md-10 offset-md-1 mt-5">
+  <div class="card">
+    <div class="card-body">
+      <h3 class="card-title text-center mb-4">📸 Memorable Moments</h3>
+      <div id="momentsCarousel" class="carousel slide" data-bs-ride="carousel" data-bs-interval="4000">
+        <div class="carousel-indicators">
+          {% for moment in memorable_moments %}
+          <button type="button" data-bs-target="#momentsCarousel" data-bs-slide-to="{{ loop.index0 }}" {% if loop.first %}class="active"{% endif %}></button>
+          {% endfor %}
+        </div>
+        <div class="carousel-inner">
+          {% for moment in memorable_moments %}
+          <div class="carousel-item {% if loop.first %}active{% endif %}">
+            <div class="text-center">
+              <img src="{{ get_wasabi_url('moments/' + moment.image_url) }}" class="d-block mx-auto" alt="{{ moment.title }}" style="max-height: 400px; max-width: 100%; object-fit: contain; border-radius: 8px;">
+              <div class="mt-3">
+                <h5>{{ moment.title }}</h5>
+                {% if moment.description %}
+                <p class="text-muted">{{ moment.description }}</p>
+                {% endif %}
+                <small class="text-muted">Posted by {{ moment.user.username }} on {{ moment.posted_at.strftime('%B %d, %Y') }}</small>
+                {% if current_user.is_authenticated and moment.posted_by == current_user.id %}
+                <form method="POST" action="{{ url_for('delete_moment', moment_id=moment.id) }}" class="d-inline ms-2" onsubmit="return confirm('Delete this memorable moment?');">
+                  <button type="submit" class="btn btn-outline-danger btn-sm">Delete</button>
+                </form>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% if memorable_moments|length > 1 %}
+        <button class="carousel-control-prev" type="button" data-bs-target="#momentsCarousel" data-bs-slide="prev">
+          <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+          <span class="visually-hidden">Previous</span>
+        </button>
+        <button class="carousel-control-next" type="button" data-bs-target="#momentsCarousel" data-bs-slide="next">
+          <span class="carousel-control-next-icon" aria-hidden="true"></span>
+          <span class="visually-hidden">Next</span>
+        </button>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
 
 {% endblock %}
