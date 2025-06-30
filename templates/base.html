@@ -78,6 +78,70 @@
   });
 </script>
 
+{% if current_user.is_authenticated %}
+<!-- Session timeout warning -->
+<script>
+    let sessionTimeout;
+    let warningTimeout;
+    const SESSION_DURATION = 30 * 60 * 1000; // 30 minutes in milliseconds
+    const WARNING_TIME = 5 * 60 * 1000; // Show warning 5 minutes before timeout
+
+    function resetSessionTimers() {
+        clearTimeout(sessionTimeout);
+        clearTimeout(warningTimeout);
+        
+        // Set warning timeout (25 minutes)
+        warningTimeout = setTimeout(showSessionWarning, SESSION_DURATION - WARNING_TIME);
+        
+        // Set session timeout (30 minutes)
+        sessionTimeout = setTimeout(logoutUser, SESSION_DURATION);
+    }
+
+    function showSessionWarning() {
+        const warningDiv = document.createElement('div');
+        warningDiv.id = 'session-warning';
+        warningDiv.className = 'alert alert-warning alert-dismissible fade show position-fixed';
+        warningDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; max-width: 400px;';
+        warningDiv.innerHTML = `
+            <strong>Session Timeout Warning!</strong><br>
+            Your session will expire in 5 minutes due to inactivity.<br>
+            <button type="button" class="btn btn-primary btn-sm mt-2" onclick="extendSession()">
+                Stay Logged In
+            </button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        document.body.appendChild(warningDiv);
+    }
+
+    function extendSession() {
+        // Make a request to extend the session
+        fetch('/extend-session', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        }).then(response => {
+            if (response.ok) {
+                document.getElementById('session-warning').remove();
+                resetSessionTimers();
+            }
+        });
+    }
+
+    function logoutUser() {
+        window.location.href = '/logout?timeout=true';
+    }
+
+    // Reset timers on user activity
+    document.addEventListener('click', resetSessionTimers);
+    document.addEventListener('keypress', resetSessionTimers);
+    document.addEventListener('scroll', resetSessionTimers);
+
+    // Initialize timers when page loads
+    resetSessionTimers();
+</script>
+{% endif %}
+
 </body>
 
 </html>

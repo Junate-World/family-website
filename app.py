@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, get_flashed_messages, session
 from flask_sqlalchemy import SQLAlchemy
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 import cloudinary
 import cloudinary.uploader
@@ -13,6 +13,9 @@ from models import FamilyMember, Comment, MemorableMoment
 app = Flask(__name__)
 app.secret_key = 'super-secret-key-1234'
 
+# Session timeout configuration (30 minutes)
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
+app.config['SESSION_REFRESH_EACH_REQUEST'] = True
 
 # Configure the app
 from flask_login import LoginManager
@@ -144,6 +147,27 @@ def load_user(user_id):
 
 from flask_login import login_user, login_required, logout_user, current_user
 
+def check_session_timeout():
+    """Check if user session has expired due to inactivity"""
+    if current_user.is_authenticated:
+        # Get last activity time from session
+        last_activity = session.get('last_activity')
+        if last_activity:
+            last_activity = datetime.fromisoformat(last_activity)
+            # Check if more than 30 minutes have passed
+            if datetime.utcnow() - last_activity > timedelta(minutes=30):
+                logout_user()
+                session.clear()
+                flash('Your session has expired due to inactivity. Please log in again.', category='info')
+                return True
+        # Update last activity time
+        session['last_activity'] = datetime.utcnow().isoformat()
+    return False
+
+@app.before_request
+def before_request():
+    """Run before each request to check session timeout"""
+    check_session_timeout()
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -169,6 +193,11 @@ def register():
             new_user = User(username=username, email=email, password_hash=bcrypt.generate_password_hash(password1).decode('utf-8'))
             db.session.add(new_user)
             db.session.commit()
+            
+            # Set session as permanent and initialize last activity
+            session.permanent = True
+            session['last_activity'] = datetime.utcnow().isoformat()
+            
             login_user(new_user, remember=True)
             flash('Account created!', category='success')
             return redirect(url_for('login'))
@@ -184,6 +213,10 @@ def login():
         user = User.query.filter_by(username=username).first()
 
         if user and bcrypt.check_password_hash(user.password_hash, password):
+            # Set session as permanent and initialize last activity
+            session.permanent = True
+            session['last_activity'] = datetime.utcnow().isoformat()
+            
             flash(f'Logged in successfully! Welcome to the Ogbonna\'s Family Website, {user.username}', category='success')
             login_user(user)
             return redirect(url_for('index'))
@@ -197,7 +230,16 @@ def login():
 @login_required
 def logout():
     logout_user()
+    session.clear()
     return redirect(url_for('login'))
+
+
+@app.route('/extend-session', methods=['POST'])
+@login_required
+def extend_session():
+    """Extend user session by updating last activity time"""
+    session['last_activity'] = datetime.utcnow().isoformat()
+    return {'status': 'success'}, 200
 
 
 @app.route('/forgot-password', methods=['GET', 'POST'])
