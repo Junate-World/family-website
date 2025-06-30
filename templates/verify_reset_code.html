@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}Verify Reset Code{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header bg-info text-white text-center">
+                    <h4><i class="fas fa-shield-alt me-2"></i>Verify Reset Code</h4>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-4">
+                        Please check your email for the 6-digit reset code and enter it below.
+                    </p>
+                    
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email Address</label>
+                            <input type="email" class="form-control" id="email" name="email" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="reset_code" class="form-label">Reset Code</label>
+                            <input type="text" class="form-control" id="reset_code" name="reset_code" 
+                                   maxlength="6" pattern="[0-9]{6}" placeholder="Enter 6-digit code" required>
+                            <div class="form-text">Enter the 6-digit code sent to your email</div>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-info">
+                                <i class="fas fa-check me-2"></i>Verify Code
+                            </button>
+                        </div>
+                    </form>
+                    
+                    <div class="text-center mt-3">
+                        <a href="{{ url_for('forgot_password') }}" class="text-decoration-none">
+                            <i class="fas fa-arrow-left me-1"></i>Back to Forgot Password
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Auto-format the reset code input
+document.getElementById('reset_code').addEventListener('input', function(e) {
+    // Remove any non-digit characters
+    this.value = this.value.replace(/[^0-9]/g, '');
+    
+    // Limit to 6 digits
+    if (this.value.length > 6) {
+        this.value = this.value.slice(0, 6);
+    }
+});
+</script>
+{% endblock %} 

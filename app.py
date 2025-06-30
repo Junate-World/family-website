@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, get_flashed_messages
+from flask import Flask, render_template, request, redirect, url_for, flash, get_flashed_messages, session
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 import os
@@ -176,6 +176,104 @@ def logout():
     return redirect(url_for('login'))
 
 
+@app.route('/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
+    if request.method == 'POST':
+        email = request.form['email']
+        user = User.query.filter_by(email=email).first()
+        
+        if user:
+            # Generate reset token and code
+            reset_code = user.generate_reset_token()
+            db.session.commit()
+            
+            # Send email with reset code
+            try:
+                msg = Message(
+                    subject='Password Reset Code - Ogbonna Family Website',
+                    recipients=[user.email],
+                    body=f'''Hello {user.username},
+
+You have requested to reset your password for the Ogbonna Family Website.
+
+Your reset code is: {reset_code}
+
+This code will expire in 15 minutes.
+
+If you did not request this password reset, please ignore this email.
+
+Best regards,
+Ogbonna Family Website Team'''
+                )
+                mail.send(msg)
+                flash('A reset code has been sent to your email address.', category='success')
+            except Exception as e:
+                print(f"Error sending email: {e}")
+                flash('Error sending reset code. Please try again.', category='error')
+        else:
+            # Don't reveal if email exists or not for security
+            flash('If an account with that email exists, a reset code has been sent.', category='info')
+        
+        return redirect(url_for('verify_reset_code'))
+    
+    return render_template('forgot_password.html')
+
+
+@app.route('/verify-reset-code', methods=['GET', 'POST'])
+def verify_reset_code():
+    if request.method == 'POST':
+        email = request.form['email']
+        reset_code = request.form['reset_code']
+        
+        user = User.query.filter_by(email=email).first()
+        
+        if user and user.is_reset_token_valid() and user.reset_code == reset_code:
+            # Store email in session for password reset
+            session['reset_email'] = email
+            flash('Code verified successfully! Please enter your new password.', category='success')
+            return redirect(url_for('reset_password'))
+        else:
+            flash('Invalid or expired reset code. Please try again.', category='error')
+            return redirect(url_for('forgot_password'))
+    
+    return render_template('verify_reset_code.html')
+
+
+@app.route('/reset-password', methods=['GET', 'POST'])
+def reset_password():
+    if 'reset_email' not in session:
+        flash('Please request a password reset first.', category='error')
+        return redirect(url_for('forgot_password'))
+    
+    if request.method == 'POST':
+        email = session['reset_email']
+        password1 = request.form['password1']
+        password2 = request.form['password2']
+        
+        user = User.query.filter_by(email=email).first()
+        
+        if not user or not user.is_reset_token_valid():
+            flash('Invalid or expired reset session. Please try again.', category='error')
+            session.pop('reset_email', None)
+            return redirect(url_for('forgot_password'))
+        
+        if password1 != password2:
+            flash('Passwords do not match.', category='error')
+        elif len(password1) < 7:
+            flash('Password must be at least 7 characters.', category='error')
+        else:
+            # Update password and clear reset token
+            user.password_hash = bcrypt.generate_password_hash(password1).decode('utf-8')
+            user.clear_reset_token()
+            db.session.commit()
+            
+            # Clear session
+            session.pop('reset_email', None)
+            
+            flash('Password has been reset successfully! You can now log in with your new password.', category='success')
+            return redirect(url_for('login'))
+    
+    return render_template('reset_password.html')
 
 
 @app.route('/')

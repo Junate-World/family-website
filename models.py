@@ -1,5 +1,8 @@
 from flask_login import UserMixin
 from extensions import db
+from datetime import datetime, timedelta
+import secrets
+import string
 
 
 
@@ -29,9 +32,34 @@ class User(db.Model, UserMixin):
     username = db.Column(db.String(100), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(200), nullable=False)
+    reset_token = db.Column(db.String(100), unique=True)
+    reset_token_expiry = db.Column(db.DateTime)
+    reset_code = db.Column(db.String(6))  # 6-digit code
 
     def __repr__(self):
         return f'<User {self.username}>'
+    
+    def generate_reset_token(self):
+        """Generate a secure reset token and 6-digit code"""
+        # Generate a secure token
+        self.reset_token = secrets.token_urlsafe(32)
+        # Generate a 6-digit code
+        self.reset_code = ''.join(secrets.choice(string.digits) for _ in range(6))
+        # Set expiry to 15 minutes from now
+        self.reset_token_expiry = datetime.utcnow() + timedelta(minutes=15)
+        return self.reset_code
+    
+    def is_reset_token_valid(self):
+        """Check if reset token is valid and not expired"""
+        if not self.reset_token or not self.reset_token_expiry:
+            return False
+        return datetime.utcnow() < self.reset_token_expiry
+    
+    def clear_reset_token(self):
+        """Clear reset token and code after use"""
+        self.reset_token = None
+        self.reset_token_expiry = None
+        self.reset_code = None
 
 class Comment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
