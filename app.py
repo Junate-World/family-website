@@ -2,9 +2,9 @@ from flask import Flask, render_template, request, redirect, url_for, flash, get
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 import os
-import boto3
-from werkzeug.utils import secure_filename
-from botocore.exceptions import ClientError
+import cloudinary
+import cloudinary.uploader
+import cloudinary.api
 
 from extensions import db
 from models import FamilyMember, Comment, MemorableMoment
@@ -37,6 +37,13 @@ app.config['MAIL_USERNAME'] = 'apikey'  # This is literally the string 'apikey'
 app.config['MAIL_PASSWORD'] = os.environ.get('SENDGRID_API_KEY')
 app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER')
 
+# Cloudinary Configuration
+cloudinary.config(
+    cloud_name=os.environ.get('CLOUDINARY_CLOUD_NAME'),
+    api_key=os.environ.get('CLOUDINARY_API_KEY'),
+    api_secret=os.environ.get('CLOUDINARY_API_SECRET')
+)
+
 # ✅ Ensure upload folder exists (even in production)
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
@@ -49,61 +56,57 @@ mail = Mail(app)
 with app.app_context():
     db.create_all()
 
-# Wasabi S3 Configuration
-app.config['WASABI_ACCESS_KEY'] = os.environ.get('WASABI_ACCESS_KEY')
-app.config['WASABI_SECRET_KEY'] = os.environ.get('WASABI_SECRET_KEY')
-app.config['WASABI_BUCKET'] = os.environ.get('WASABI_BUCKET')
-app.config['WASABI_REGION'] = os.environ.get('WASABI_REGION', 'us-east-1')
+# Allowed file extensions
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
-# Set the correct endpoint based on region
-region = app.config['WASABI_REGION']
-if region == 'us-east-1':
-    default_endpoint = 'https://s3.us-east-1.wasabisys.com'
-elif region == 'us-west-1':
-    default_endpoint = 'https://s3.us-west-1.wasabisys.com'
-elif region == 'eu-central-1':
-    default_endpoint = 'https://s3.eu-central-1.wasabisys.com'
-elif region == 'ap-northeast-1':
-    default_endpoint = 'https://s3.ap-northeast-1.wasabisys.com'
-else:
-    default_endpoint = f'https://s3.{region}.wasabisys.com'
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-app.config['WASABI_ENDPOINT'] = os.environ.get('WASABI_ENDPOINT', default_endpoint)
-
-# Initialize Wasabi S3 client
-s3_client = boto3.client(
-    's3',
-    aws_access_key_id=app.config['WASABI_ACCESS_KEY'],
-    aws_secret_access_key=app.config['WASABI_SECRET_KEY'],
-    region_name=app.config['WASABI_REGION'],
-    endpoint_url=app.config['WASABI_ENDPOINT']
-)
-
-def upload_to_wasabi(file, filename):
-    """Upload a file to Wasabi S3"""
+def upload_to_cloudinary(file, folder='ogbonna_family'):
+    """Upload a file to Cloudinary"""
     try:
-        s3_client.upload_fileobj(file, app.config['WASABI_BUCKET'], f"uploads/{filename}")
-        return filename
-    except ClientError as e:
-        print(f"Error uploading to Wasabi: {e}")
+        if file and allowed_file(file.filename):
+            # Upload to Cloudinary
+            result = cloudinary.uploader.upload(
+                file,
+                folder=folder,
+                resource_type="auto"
+            )
+            return result['public_id']  # Return the public_id for storage
+    except Exception as e:
+        print(f"Error uploading to Cloudinary: {e}")
         return None
-
-def get_wasabi_url(filename):
-    """Get the public URL for a file in Wasabi"""
-    if filename:
-        # Check if it's a memorable moment or member photo
-        if filename.startswith('moments/'):
-            # For memorable moments
-            return f"https://s3.{app.config['WASABI_REGION']}.wasabisys.com/{app.config['WASABI_BUCKET']}/{filename}"
-        else:
-            # For member photos
-            return f"https://s3.{app.config['WASABI_REGION']}.wasabisys.com/{app.config['WASABI_BUCKET']}/uploads/{filename}"
     return None
 
-# Make get_wasabi_url available in templates
+def get_cloudinary_url(public_id, transformation=None):
+    """Get the URL for a file in Cloudinary"""
+    if public_id:
+        try:
+            if transformation:
+                return cloudinary.CloudinaryImage(public_id).build_url(transformation=transformation)
+            else:
+                return cloudinary.CloudinaryImage(public_id).build_url()
+        except Exception as e:
+            print(f"Error getting Cloudinary URL: {e}")
+            return None
+    return None
+
+def delete_from_cloudinary(public_id):
+    """Delete a file from Cloudinary"""
+    if public_id:
+        try:
+            result = cloudinary.uploader.destroy(public_id)
+            return result.get('result') == 'ok'
+        except Exception as e:
+            print(f"Error deleting from Cloudinary: {e}")
+            return False
+    return False
+
+# Make get_cloudinary_url available in templates
 @app.context_processor
 def utility_processor():
-    return dict(get_wasabi_url=get_wasabi_url)
+    return dict(get_cloudinary_url=get_cloudinary_url)
 
 @app.route('/init-db')
 def init_db():
@@ -269,12 +272,9 @@ def add_member():
         parent_id = int(parent_id) if parent_id else None
 
         if photo and photo.filename != '':
-            photo_filename = secure_filename(photo.filename)
-            # Upload to Wasabi S3
-            if upload_to_wasabi(photo, photo_filename):
-                photo_filename = photo_filename  # Keep the filename for database
-            else:
-                flash('Error uploading photo. Please try again.', category='error')
+            photo_filename = upload_to_cloudinary(photo)
+            if not photo_filename:
+                flash('Error saving photo. Please try again.', category='error')
                 return redirect(url_for('add_member'))
 
         new_member = FamilyMember(
@@ -315,13 +315,16 @@ def edit_member(member_id):
 
         photo = request.files['photo']
         if photo and photo.filename != '':
-            photo_filename = secure_filename(photo.filename)
-            # Upload to Wasabi S3
-            if upload_to_wasabi(photo, photo_filename):
-                member.photo_url = photo_filename
-            else:
-                flash('Error uploading photo. Please try again.', category='error')
+            # Delete old photo if it exists
+            if member.photo_url:
+                delete_from_cloudinary(member.photo_url)
+            
+            photo_filename = upload_to_cloudinary(photo)
+            if not photo_filename:
+                flash('Error saving photo. Please try again.', category='error')
                 return redirect(url_for('edit_member', member_id=member.id))
+            
+            member.photo_url = photo_filename
 
         db.session.commit()
         return redirect(url_for('member_profile', member_id=member.id))
@@ -335,13 +338,9 @@ def edit_member(member_id):
 def delete_member(member_id):
     member = FamilyMember.query.get_or_404(member_id)
     
-    # Delete photo file from Wasabi S3 if it exists
+    # Delete photo file from local storage
     if member.photo_url:
-        try:
-            s3_client.delete_object(Bucket=app.config['WASABI_BUCKET'], Key=f"uploads/{member.photo_url}")
-        except ClientError as e:
-            print(f"Error deleting from Wasabi: {e}")
-            # Continue with deletion even if file deletion fails
+        delete_from_cloudinary(member.photo_url)
     
     db.session.delete(member)
     db.session.commit()
@@ -381,22 +380,21 @@ def post_moment():
             return redirect(url_for('post_moment'))
         
         if image and image.filename != '':
-            image_filename = secure_filename(image.filename)
-            # Upload to Wasabi S3
-            if upload_to_wasabi(image, f"moments/{image_filename}"):
-                moment = MemorableMoment(
-                    title=title,
-                    description=description,
-                    image_url=image_filename,
-                    posted_by=current_user.id
-                )
-                db.session.add(moment)
-                db.session.commit()
-                flash('Memorable moment posted successfully!', category='success')
-                return redirect(url_for('index'))
-            else:
-                flash('Error uploading image. Please try again.', category='error')
+            image_filename = upload_to_cloudinary(image, 'moments')
+            if not image_filename:
+                flash('Error saving image. Please try again.', category='error')
                 return redirect(url_for('post_moment'))
+            
+            moment = MemorableMoment(
+                title=title,
+                description=description,
+                image_url=image_filename,
+                posted_by=current_user.id
+            )
+            db.session.add(moment)
+            db.session.commit()
+            flash('Memorable moment posted successfully!', category='success')
+            return redirect(url_for('index'))
     
     return render_template('post_moment.html')
 
@@ -410,12 +408,9 @@ def delete_moment(moment_id):
         flash('You can only delete your own posts.', category='error')
         return redirect(url_for('index'))
     
-    # Delete image from Wasabi S3
+    # Delete image from local storage
     if moment.image_url:
-        try:
-            s3_client.delete_object(Bucket=app.config['WASABI_BUCKET'], Key=f"moments/{moment.image_url}")
-        except ClientError as e:
-            print(f"Error deleting from Wasabi: {e}")
+        delete_from_cloudinary(moment.image_url)
     
     db.session.delete(moment)
     db.session.commit()

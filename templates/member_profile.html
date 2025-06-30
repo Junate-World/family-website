@@ -6,7 +6,7 @@
       <div class="row g-0">
         {% if member.photo_url %}
         <div class="col-md-4 d-flex align-items-center justify-content-center p-3">
-          <img src="{{ get_wasabi_url(member.photo_url) }}" alt="Photo" class="img-fluid rounded" style="max-height: 220px;">
+          <img src="{{ get_cloudinary_url(member.photo_url) }}" alt="Photo" class="img-fluid rounded" style="max-height: 220px;">
         </div>
         {% endif %}
         <div class="col-md-8">

@@ -55,7 +55,7 @@
     <div class="col-md-4 col-sm-6">
         <div class="card h-100">
             {% if member.photo_url %}
-            <img src="{{ get_wasabi_url(member.photo_url) }}" alt="Photo of {{ member.full_name }}" class="card-img-top">
+            <img src="{{ get_cloudinary_url(member.photo_url) }}" alt="Photo of {{ member.full_name }}" class="card-img-top">
             {% endif %}
             <div class="card-body d-flex flex-column">
                 <h5 class="card-title">{{ member.full_name }}</h5>
@@ -88,7 +88,7 @@
           {% for moment in memorable_moments %}
           <div class="carousel-item {% if loop.first %}active{% endif %}">
             <div class="text-center">
-              <img src="{{ get_wasabi_url('moments/' + moment.image_url) }}" class="d-block mx-auto" alt="{{ moment.title }}" style="max-height: 400px; max-width: 100%; object-fit: contain; border-radius: 8px;">
+              <img src="{{ get_cloudinary_url(moment.image_url) }}" class="d-block mx-auto" alt="{{ moment.title }}" style="max-height: 400px; max-width: 100%; object-fit: contain; border-radius: 8px;">
               <div class="mt-3">
                 <h5>{{ moment.title }}</h5>
                 {% if moment.description %}
