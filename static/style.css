@@ -143,7 +143,34 @@ body.dark-mode textarea {
     min-width: 250px;
 }
 
-/* Extra small devices */
+@media (max-width: 768px) {
+    .row {
+        flex-direction: column;
+    }
+    .col-md-4, .col-md-6, .col-md-8, .col-lg-10 {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin-bottom: 1.5rem;
+    }
+    .card img, .card-img-top {
+        height: 160px !important;
+        width: 100% !important;
+        object-fit: cover;
+    }
+    form, .card, .container, .card-body {
+        padding-left: 0.5rem !important;
+        padding-right: 0.5rem !important;
+    }
+    .btn, .btn-primary, .btn-warning, .btn-danger {
+        width: 100% !important;
+        margin-bottom: 0.5rem;
+    }
+    input, textarea, select {
+        width: 100% !important;
+        font-size: 1rem;
+    }
+}
+
 @media (max-width: 480px) {
     body {
         font-size: 1rem;
@@ -151,25 +178,24 @@ body.dark-mode textarea {
     h1 {
         font-size: 1.5rem;
     }
-    .card img {
-        height: 100px;
+    .card img, .card-img-top {
+        height: 100px !important;
     }
     .navbar, form, .card {
-        padding: 0.5rem;
+        padding: 0.5rem !important;
     }
-    .btn, .btn-primary {
-        width: 100%;
-        padding: 0.75rem 0;
+    .btn, .btn-primary, .btn-warning, .btn-danger {
+        width: 100% !important;
+        padding: 0.75rem 0 !important;
         font-size: 1rem;
     }
     input, textarea, select {
-        width: 100%;
+        width: 100% !important;
         font-size: 1rem;
     }
 }
 
-/* Responsive images */
-img {
+img, .img-fluid, .card-img-top {
     max-width: 100%;
     height: auto;
 } 
