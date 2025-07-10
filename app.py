@@ -506,11 +506,11 @@ def edit_member(member_id):
 @require_member_ownership
 def delete_member(member_id):
     member = FamilyMember.query.get_or_404(member_id)
-    
+
     # Delete photo file from cloudinary
     if member.photo_url:
         delete_from_cloudinary(member.photo_url)
-    
+
     db.session.delete(member)
     db.session.commit()
     flash('Family member deleted successfully!', category='success')
