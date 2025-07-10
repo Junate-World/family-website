@@ -11,7 +11,7 @@ from extensions import db
 from models import FamilyMember, Comment, MemorableMoment
 
 app = Flask(__name__)
-app.secret_key = 'super-secret-key-1234'
+app.secret_key = os.getenv('OGBONNA_SECRET_KEY')
 
 # Session timeout configuration (30 minutes)
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
