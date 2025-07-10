@@ -2,11 +2,11 @@
 {% block content %}
 <div class="container mt-4">
   <div class="row justify-content-center">
-    <div class="col-12 col-lg-10">
+    <div class="col-lg-10">
       <div class="card shadow-sm">
         <div class="card-body">
           <h1 class="text-center mb-4">Family Tree</h1>
-          <div id="tree" class="d-flex justify-content-center" style="overflow-x:auto;"></div>
+          <div id="tree" class="d-flex justify-content-center"></div>
         </div>
       </div>
     </div>
@@ -15,8 +15,8 @@
 <style>
 .node circle { fill: #4f8cff; }
 .node text { font: 14px 'Segoe UI', 'Roboto', Arial, sans-serif; }
-.link { fill: none; stroke: #999; stroke-width: 2px; }
-</style>
+        .link { fill: none; stroke: #999; stroke-width: 2px; }
+    </style>
 <script src="https://d3js.org/d3.v7.min.js"></script>
 <script>
 window.familyTreeData = {{ tree_data|tojson }};
