@@ -34,7 +34,7 @@
             <label class="form-label" for="parent_id">Parent:</label>
             <select name="parent_id" class="form-select">
           <option value="">None</option>
-    {% for p in FamilyMember.query.all() %}
+    {% for p in family_members %}
                 <option value="{{ p.id }}" {% if member.parent_id == p.id %}selected{% endif %}>{{ p.full_name }}</option>
     {% endfor %}
             </select>

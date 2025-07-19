@@ -6,6 +6,7 @@ import cloudinary
 import cloudinary.uploader
 import cloudinary.api
 from functools import wraps
+import time
 
 from extensions import db
 from models import FamilyMember, Comment, MemorableMoment
@@ -31,8 +32,31 @@ login_manager.login_view = "login"  # This is correct for Flask-Login
 
 bcrypt = Bcrypt(app)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('SUPABASE_DATABASE_URL', 'sqlite:///family.db').replace('postgres://', 'postgresql://')
+# Database configuration with connection pooling
+database_url = os.getenv('SUPABASE_DATABASE_URL', 'sqlite:///family.db')
+if database_url.startswith('postgres'):
+    # Add connection pooling parameters for PostgreSQL
+    # More conservative settings for Supabase free tier
+    if '?' in database_url:
+        database_url += '&pool_size=3&max_overflow=5&pool_timeout=20&pool_recycle=1800'
+    else:
+        database_url += '?pool_size=3&max_overflow=5&pool_timeout=20&pool_recycle=1800'
+    database_url = database_url.replace('postgres://', 'postgresql://')
+
+app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    'pool_pre_ping': True,
+    'pool_recycle': 1800,  # 30 minutes
+    'pool_size': 3,  # Reduced for free tier
+    'max_overflow': 5,  # Reduced for free tier
+    'pool_timeout': 20,  # Reduced timeout
+    'connect_args': {
+        'connect_timeout': 10,
+        'application_name': 'ogbonna_family_app',
+        'options': '-c statement_timeout=30000'  # 30 second statement timeout
+    }
+}
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
 app.config['MAIL_SERVER'] = 'smtp.sendgrid.net'
 app.config['MAIL_PORT'] = 587
@@ -55,6 +79,36 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 db.init_app(app)
 migrate = Migrate(app, db)
 mail = Mail(app)
+
+# Database connection cleanup function
+def cleanup_db_connection():
+    """Clean up database connections to prevent connection leaks"""
+    try:
+        db.session.remove()
+        db.engine.dispose()
+    except Exception as e:
+        print(f"Error cleaning up database connection: {e}")
+
+def log_connection_pool_status():
+    """Log the current status of the database connection pool"""
+    try:
+        engine = db.engine
+        pool = engine.pool
+        print(f"Connection pool status - Size: {pool.size()}, Checked out: {pool.checkedout()}, Overflow: {pool.overflow()}")
+    except Exception as e:
+        print(f"Error logging connection pool status: {e}")
+
+def retry_db_operation(operation, max_retries=3, delay=1):
+    """Retry a database operation with exponential backoff"""
+    for attempt in range(max_retries):
+        try:
+            return operation()
+        except Exception as e:
+            if attempt == max_retries - 1:
+                raise e
+            print(f"Database operation failed (attempt {attempt + 1}/{max_retries}): {e}")
+            time.sleep(delay * (2 ** attempt))  # Exponential backoff
+            cleanup_db_connection()
 
 # Ensure tables are created (production-safe)
 with app.app_context():
@@ -141,6 +195,18 @@ def init_db():
         db.create_all()
     return "Database tables created successfully!"
 
+@app.route('/health')
+def health_check():
+    """Health check endpoint to monitor database connectivity"""
+    try:
+        # Test database connection
+        db.session.execute('SELECT 1')
+        db.session.commit()
+        return {'status': 'healthy', 'database': 'connected'}, 200
+    except Exception as e:
+        cleanup_db_connection()
+        return {'status': 'unhealthy', 'database': 'disconnected', 'error': str(e)}, 500
+
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
@@ -168,6 +234,23 @@ def check_session_timeout():
 def before_request():
     """Run before each request to check session timeout"""
     check_session_timeout()
+    
+    # Log connection pool status every 100 requests (roughly)
+    import random
+    if random.randint(1, 100) == 1:
+        log_connection_pool_status()
+
+@app.teardown_appcontext
+def teardown_db(exception):
+    """Clean up database connections after each request"""
+    cleanup_db_connection()
+    
+    # Force cleanup of any remaining connections
+    try:
+        db.session.close()
+        db.engine.dispose()
+    except Exception as e:
+        print(f"Error in teardown: {e}")
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -458,7 +541,9 @@ def add_member():
         flash('Family member added successfully!', category='success')
         return redirect(url_for('index'))
 
-    return render_template('add_member.html', FamilyMember=FamilyMember)
+    # Get all family members for parent selection
+    family_members = FamilyMember.query.all()
+    return render_template('add_member.html', family_members=family_members)
 
 
 # Edit a family member
@@ -497,7 +582,9 @@ def edit_member(member_id):
         flash('Family member updated successfully!', category='success')
         return redirect(url_for('member_profile', member_id=member.id))
 
-    return render_template('edit_member.html', FamilyMember=FamilyMember, member=member)
+    # Get all family members for parent selection
+    family_members = FamilyMember.query.all()
+    return render_template('edit_member.html', family_members=family_members, member=member)
 
 
 # Delete a family member
