@@ -35,12 +35,6 @@ bcrypt = Bcrypt(app)
 # Database configuration with connection pooling
 database_url = os.getenv('SUPABASE_DATABASE_URL', 'sqlite:///family.db')
 if database_url.startswith('postgres'):
-    # Add connection pooling parameters for PostgreSQL
-    # More conservative settings for Supabase free tier
-    if '?' in database_url:
-        database_url += '&pool_size=3&max_overflow=5&pool_timeout=20&pool_recycle=1800'
-    else:
-        database_url += '?pool_size=3&max_overflow=5&pool_timeout=20&pool_recycle=1800'
     database_url = database_url.replace('postgres://', 'postgresql://')
 
 app.config['SQLALCHEMY_DATABASE_URI'] = database_url
